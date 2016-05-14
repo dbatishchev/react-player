@@ -6,28 +6,28 @@ import * as TodoActions       from 'actions/TodoActions';
 import { connect }            from 'react-redux';
 
 class Home extends Component {
-  static propTypes = {
-    todos:    PropTypes.any.isRequired,
-    dispatch: PropTypes.func.isRequired
-  };
+    static propTypes = {
+        todos: PropTypes.any.isRequired,
+        dispatch: PropTypes.func.isRequired
+    };
 
-  static needs = [
-    TodoActions.getTodos
-  ];
+    static needs = [
+        TodoActions.getTopArtists
+    ];
 
-  render() {
-    const { todos, dispatch } = this.props;
+    render() {
+        const { todos, dispatch } = this.props;
 
-    return (
-      <div id="todo-list">
-        <TodosView todos={todos}
-          {...bindActionCreators(TodoActions, dispatch)} />
+        return (
+            <div id="todo-list">
+                <TodosView todos={todos}
+                    {...bindActionCreators(TodoActions, dispatch)} />
 
-        <TodosForm
-          {...bindActionCreators(TodoActions, dispatch)}/>
-      </div>
-    );
-  }
+                <TodosForm
+                    {...bindActionCreators(TodoActions, dispatch)}/>
+            </div>
+        );
+    }
 }
 
-export default connect(state => ({ todos: state.todos }))(Home)
+export default connect(state => ({todos: state.todos}))(Home)
