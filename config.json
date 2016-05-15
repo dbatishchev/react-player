@@ -1,0 +1,21 @@
+{
+  "auth": {
+    "vk": {
+      "app_id": "5461912",
+      "secret": "nfSyE288V2GIyH2MmyE0"
+    }
+  },
+  "app": {
+    "host": "localhost",
+    "port": 3000,
+    "schema": "http",
+    "url": "http://localhost:3000"
+  },
+  "session": {
+    "key": "mysite.sid.uid.whatever",
+    "secret": "secret",
+    "cookie": {
+      "maxAge": 2678400000
+    }
+  }
+}

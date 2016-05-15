@@ -9,44 +9,119 @@ import * as reducers             from 'reducers';
 import promiseMiddleware         from 'lib/promiseMiddleware';
 import fetchComponentData        from 'lib/fetchComponentData';
 import { createStore,
-         combineReducers,
-         applyMiddleware }       from 'redux';
+    combineReducers,
+    applyMiddleware }            from 'redux';
 import path                      from 'path';
+
+import config from "nconf";
+import http from "http";
+import passport from 'passport';
+import AuthVKStrategy from 'passport-vkontakte';
+import flash from 'connect-flash';
+import json from 'express-json';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+
+config.argv()
+    .env()
+    .file({file: 'config.json'});
 
 const app = express();
 
-if (process.env.NODE_ENV !== 'production') {
-  require('./webpack.dev').default(app);
-}
-
+var sessionOptions = config.get("session");
+app.use(json());
+//app.use(express.urlencoded());
+//app.use(express.methodOverride());
+app.use(cookieParser());
+app.use(session(sessionOptions));
+app.use(flash());
+app.use(passport.initialize());
+app.use(passport.session());
 app.use(express.static(path.join(__dirname, 'dist')));
 
-app.use( (req, res) => {
-  const location = createLocation(req.url);
-  const reducer  = combineReducers(reducers);
-  const store    = applyMiddleware(promiseMiddleware)(createStore)(reducer);
+passport.use('vk', new AuthVKStrategy.Strategy({
+        clientID: config.get("auth:vk:app_id"),
+        clientSecret: config.get("auth:vk:secret"),
+        callbackURL: config.get("app:url") + "/auth/vk/callback"
+    },
+    function (accessToken, refreshToken, profile, done) {
+        //console.log("facebook auth: ", profile);
 
-  match({ routes, location }, (err, redirectLocation, renderProps) => {
-    if(err) {
-      console.error(err);
-      return res.status(500).end('Internal server error');
+        console.log('111!!!');
+
+        //return done(null, {
+        //    username: profile.displayName,
+        //    photoUrl: profile.photos[0].value,
+        //    profileUrl: profile.profileUrl
+        //});
     }
+));
 
-    if(!renderProps)
-      return res.status(404).end('Not found');
+passport.serializeUser(function (user, done) {
+    console.log('222!!!');
+    //done(null, JSON.stringify(user));
+});
 
-    function renderView() {
-      const InitialView = (
-        <Provider store={store}>
-          <RoutingContext {...renderProps} />
-        </Provider>
-      );
 
-      const componentHTML = renderToString(InitialView);
+passport.deserializeUser(function (data, done) {
+    console.log('333!!!');
+    //try {
+    //    done(null, JSON.parse(data));
+    //} catch (e) {
+    //    done(err)
+    //}
+});
 
-      const initialState = store.getState();
+if (process.env.NODE_ENV !== 'production') {
+    require('./webpack.dev').default(app);
+}
 
-      const HTML = `
+app.get('/sign-out', function (req, res) {
+    req.logout();
+    res.redirect('/');
+});
+
+app.get('/auth/vk',
+    passport.authenticate('vk', {
+        scope: ['friends']
+    }),
+    function (req, res) {
+    }
+);
+
+app.get('/auth/vk/callback',
+    passport.authenticate('vk', {
+        failureRedirect: '/auth'
+    }),
+    function (req, res) {
+        res.redirect('/');
+    });
+
+app.use((req, res) => {
+    const location = createLocation(req.url);
+    const reducer = combineReducers(reducers);
+    const store = applyMiddleware(promiseMiddleware)(createStore)(reducer);
+
+    match({routes, location}, (err, redirectLocation, renderProps) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).end('Internal server error');
+        }
+
+        if (!renderProps)
+            return res.status(404).end('Not found');
+
+        function renderView() {
+            const InitialView = (
+                <Provider store={store}>
+                    <RoutingContext {...renderProps} />
+                </Provider>
+            );
+
+            const componentHTML = renderToString(InitialView);
+            const initialState = store.getState();
+
+            const HTML = `
       <!DOCTYPE html>
       <html>
         <head>
@@ -63,15 +138,14 @@ app.use( (req, res) => {
         </body>
       </html>
       `;
+            return HTML;
+        }
 
-      return HTML;
-    }
-
-    fetchComponentData(store.dispatch, renderProps.components, renderProps.params)
-      .then(renderView)
-      .then(html => res.end(html))
-      .catch(err => res.end(err.message));
-  });
+        fetchComponentData(store.dispatch, renderProps.components, renderProps.params)
+            .then(renderView)
+            .then(html => res.end(html))
+            .catch(err => res.end(err.message));
+    });
 });
 
 export default app;
